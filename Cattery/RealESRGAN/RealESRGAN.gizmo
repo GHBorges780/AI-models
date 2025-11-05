@@ -1,0 +1,55 @@
+version 13.1 v1
+Gizmo {
+ onCreate "if nuke.NUKE_VERSION_MAJOR >= 14:\n    if nuke.expression('$gui'):\n        nukescripts.cattery.create_menu()\npath = \[i for i in nuke.pluginPath() if ''.join(l for l in nuke.thisNode().name() if l.isalpha()).lower() in i.lower()][0]\nif not path in sys.path:\n    sys.path.append(path)\nimport cattery_realesrgan\ncattery_realesrgan.on_create()"
+ knobChanged "if nuke.NUKE_VERSION_MAJOR >= 14:\n    try:\n        import cattery_realesrgan\n    except:\n        if nuke.expression('$gui'):\n            nukescripts.cattery.create_menu()\npath = \[i for i in nuke.pluginPath() if ''.join(l for l in nuke.thisNode().name() if l.isalpha()).lower() in i.lower()][0]\nif not path in sys.path:\n    sys.path.append(path)\nimport cattery_realesrgan\ncattery_realesrgan.knob_changed()"
+ onDestroy "nuke.thisNode()\[\"knobChanged\"].setValue(\"\")"
+ addUserKnob {20 RealESRGAN}
+ addUserKnob {26 localGPU l "Local GPU:" T ""}
+ addUserKnob {26 gpuName l "" -STARTLINE T "NVIDIA TITAN RTX"}
+ addUserKnob {6 useGPUIfAvailable l "Use GPU if available" t "Select this to render on the <b>Local GPU</b>, if available.\n\nYou can select this even if no GPU is currently available on your machine. The GPU will then be used whenever the script is opened on a machine which does have a GPU available. You should also select this if you wish to render from the command line with the <b>--gpu</b> option.\n\nIf this node requires full frames from its inputs, and is therefore unable to reduce its memory overhead, it will fall back to the CPU if an attempt to render a frame on the GPU fails due to lack of memory. When this occurs, a warning message will be printed to the console." +STARTLINE}
+ useGPUIfAvailable true
+ addUserKnob {26 ""}
+ addUserKnob {26 channelsIn l "Channels In:" t "The channels the model expects as input." T "rgba.red, rgba.green, rgba.blue"}
+ addUserKnob {41 in_colorspace l "Input Colorspace" t "Define the colorspace that the input image is in." T Colorspace1.colorspace_in}
+ addUserKnob {6 halfPrecision l "Optimize for Speed and Memory" t "Whether to process at half float precision. This speeds up execution and enables the processing of larger images, however there is the risk of artifacts with some trained models." +STARTLINE}
+}
+ Input {
+  inputs 0
+  name Input1
+  xpos 829
+  ypos 35
+ }
+set N18ce3470 [stack 0]
+ Colorspace {
+  colorspace_in RGB
+  colorspace_out sRGB
+  name Colorspace1
+  knobChanged "nuke.toNode(\"Colorspace2\")\[\"colorspace_out\"].setValue(nuke.thisNode()\[\"colorspace_in\"].value())"
+  xpos 829
+  ypos 75
+ }
+set N1b454c00 [stack 0]
+ Inference {
+  useGPUIfAvailable {{parent.useGPUIfAvailable}}
+  modelFile "\[lsearch -inline [plugins -all realesrgan.cat] *.cat]"
+  halfPrecision {{parent.halfPrecision}}
+  serialiseKnob {}
+  name Inference1
+  xpos 829
+  ypos 129
+ }
+ Colorspace {
+  colorspace_in sRGB
+  colorspace_out RGB
+  name Colorspace2
+  xpos 829
+  ypos 202
+ }
+ Output {
+  name Output1
+  xpos 829
+  ypos 302
+ }
+push $N18ce3470
+push $N1b454c00
+end_group
