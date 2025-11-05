@@ -1,0 +1,255 @@
+#! /Applications/Nuke16.0v1/Nuke16.0v1.app/Contents/MacOS/libnuke-16.0.1.dylib -nx
+version 16.0 v1
+Gizmo {
+ name ViTMatte1
+ onCreate "\nif nuke.NUKE_VERSION_MAJOR >= 14:\n    if nuke.expression('$gui'):\n        nukescripts.cattery.create_menu()\ntry:\n    path = \[i for i in nuke.pluginPath() if ''.join(l for l in nuke.thisNode().name() if l.isalpha()).lower() in i.lower()]\[0]\n    if not path in sys.path:\n        sys.path.append(path)\nexcept IndexError as e:\n    raise AssertionError(f\"\"\"\{nuke.thisNode().name()\} can't be fully loaded as cattery directory has not been registered in time. \nEnsure that the cattery directory has been registered in your init.py otherwise copy the Cattery folder into .nuke\n\nfrom nukescripts import cattery\nnuke.pluginAddPath('<cattery_directory>')\ncattery.register_cats()\"\"\")\nimport cattery_vitmatte\ncattery_vitmatte.on_create()\n"
+ onDestroy "nuke.thisNode()['knobChanged'].setValue('')"
+ knobChanged "\nif nuke.NUKE_VERSION_MAJOR >= 14:\n    try:\n        import cattery_vitmatte\n    except:\n        if nuke.expression('$gui'):\n            nukescripts.cattery.create_menu()\n\npath = [i for i in nuke.pluginPath() if ''.join(l for l in nuke.thisNode().name() if l.isalpha()).lower() in i.lower()][0]\nif not path in sys.path:\n    sys.path.append(path)\n\nimport cattery_vitmatte\ncattery_vitmatte.knob_changed()\n"
+ addUserKnob {20 User}
+ addUserKnob {26 localGPU l "Local GPU:" T " "}
+ addUserKnob {26 gpuName l "" -STARTLINE T "Apple M2 Pro"}
+ addUserKnob {6 useGPUIfAvailable l "Use GPU if available" t "Select this to render on the <b>Local GPU</b>, if available.\n\nYou can select this even if no GPU is currently available on your machine. The GPU will then be used whenever the script is opened on a machine which does have a GPU available. You should also select this if you wish to render from the command line with the <b>--gpu</b> option.\n\nIf this node requires full frames from its inputs, and is therefore unable to reduce its memory overhead, it will fall back to the CPU if an attempt to render a frame on the GPU fails due to lack of memory. When this occurs, a warning message will be printed to the console." +STARTLINE}
+ useGPUIfAvailable true
+ addUserKnob {26 ""}
+ addUserKnob {26 channelsIn l "Channels In:" t "The channels the model expects as input." T "rgba.red, rgba.green, rgba.blue, rgba.alpha"}
+ addUserKnob {41 in_colorspace l "Input Colorspace" t "Define the colorspace that the input image is in." T Colorspace1.colorspace_in}
+ addUserKnob {4 viewMode l "View Mode" t "Selects the display mode: view either the alpha matte or the trimap.\n\nThe trimap display is particularly useful for troubleshooting its generation." M {Result Trimap ""}}
+ addUserKnob {4 modelSize l "Model Size" t "The large model can give more detailed results but takes more time to process." M {Small Large "" "" ""}}
+ addUserKnob {4 resolution l Resolution t "Sets the internal processing resolution. Choosing a lower resolution significantly improves performance and reduces memory usage." M {Full "Half (1:2)" "Quarter (1:4)" ""}}
+ addUserKnob {7 unknownRegionValue l "Edge Refinement" t "Adjusts the grey-level of the trimap's unknown region to refine the edges of the generated matte." R -1 1}
+ addUserKnob {26 ""}
+ addUserKnob {6 generateTrimap l "Generate Trimap" t "Select this to generate a trimap from the matte provided at the Trimap input.\n\nThe generated trimap is an average of the input mask, processed using dilation and erosion operators.\nThe dilation and erosion sizes are controlled by the Expansion and Shrinkage knobs. " +STARTLINE}
+ generateTrimap true
+ addUserKnob {7 expansion l Expansion t "Controls the dilation amount. Higher values expand trimap outside, widening the unknown zone of the trimap." R 0 100}
+ expansion 5
+ addUserKnob {7 shrinkage l Shrinkage t "Controls the erosion amount. Higher values shrink the trimap inwards, refining the foreground zone of the trimap." R 0 100}
+ addUserKnob {26 ""}
+ addUserKnob {6 halfPrecision l "Optimize for Speed and Memory" t "Whether to process at half float precision. This speeds up execution and enables the processing of larger images, however there is the risk of artifacts with some trained models." +STARTLINE}
+}
+ Input {
+  inputs 0
+  name Input
+  xpos 53
+  ypos -19
+ }
+ Reformat {
+  type scale
+  scale {{"parent.resolution == 0 ? 1 : (parent.resolution == 1 ? 0.5 : 0.25)"}}
+  name Reformat1
+  xpos 53
+  ypos 19
+ }
+set N28e7b400 [stack 0]
+ Colorspace {
+  colorspace_out sRGB
+  name Colorspace1
+  xpos 53
+  ypos 60
+ }
+set N28a34200 [stack 0]
+ Remove {
+  operation keep
+  channels alpha
+  name Remove1
+  xpos 53
+  ypos 95
+ }
+set N50050000 [stack 0]
+ Dot {
+  name Dot4
+  xpos 87
+  ypos 159
+ }
+set N50795200 [stack 0]
+ Dot {
+  name Dot5
+  xpos 87
+  ypos 198
+ }
+set N50058400 [stack 0]
+push $N50050000
+ Dot {
+  name Dot3
+  xpos 313
+  ypos 102
+ }
+ Dilate {
+  size {{parent.expansion}}
+  name Dilate_Mask
+  xpos 279
+  ypos 153
+ }
+ CopyBBox {
+  inputs 2
+  name CopyBBox2
+  xpos 279
+  ypos 195
+ }
+ Dot {
+  name Dot8
+  xpos 313
+  ypos 249
+ }
+push $N50058400
+push $N50795200
+ Dilate {
+  size {{-parent.shrinkage}}
+  name Erode_Mask
+  xpos 157
+  ypos 152
+ }
+ CopyBBox {
+  inputs 2
+  name CopyBBox1
+  xpos 157
+  ypos 195
+ }
+ Dot {
+  name Dot7
+  xpos 191
+  ypos 249
+ }
+ Dissolve {
+  inputs 2
+  which 0.5
+  name Dissolve
+  xpos 218
+  ypos 242
+ }
+ Dot {
+  name Dot9
+  xpos 252
+  ypos 290
+ }
+push $N50058400
+ Dot {
+  name Dot12
+  xpos 11
+  ypos 198
+ }
+ Dot {
+  name Dot13
+  xpos 11
+  ypos 290
+ }
+ Switch {
+  inputs 2
+  which {{"parent.generateTrimap ? 1 : 0"}}
+  name Switch2
+  xpos 53
+  ypos 287
+ }
+ Expression {
+  channel0 {-rgba.red -rgba.green -rgba.blue rgba.alpha}
+  expr0 "a < 1e-2 ? 0 : (a > 0.99 ? 1 : 0.5 * (1 + parent.unknownRegionValue))"
+  channel1 {-rgba.red -rgba.green -rgba.blue none}
+  channel2 {-rgba.red -rgba.green -rgba.blue none}
+  channel3 {none none none -rgba.alpha}
+  name Expression2
+  xpos 53
+  ypos 324
+ }
+ Dot {
+  name Dot15
+  xpos 87
+  ypos 362
+ }
+set N5052c000 [stack 0]
+ Dot {
+  name Dot6
+  xpos 345
+  ypos 362
+ }
+push $N5052c000
+push $N28a34200
+ Dot {
+  name Dot2
+  xpos -23
+  ypos 63
+ }
+ Dot {
+  name Dot14
+  xpos -23
+  ypos 409
+ }
+ Copy {
+  inputs 2
+  from0 rgba.alpha
+  to0 rgba.alpha
+  name Copy2
+  xpos 53
+  ypos 402
+ }
+set N50054a00 [stack 0]
+ Inference {
+  useGPUIfAvailable {{parent.useGPUIfAvailable 0}}
+  modelFile "\[lsearch -inline \[plugins -all ViTMatte-B.cat] *.cat]"
+  halfPrecision {{parent.halfPrecision}}
+  serialiseKnob {}
+  name Inference_B
+  xpos 114
+  ypos 463
+  disable {{"parent.modelSize == 0"}}
+ }
+push $N50054a00
+ Inference {
+  useGPUIfAvailable {{parent.useGPUIfAvailable 0}}
+  modelFile "\[lsearch -inline \[plugins -all ViTMatte-S.cat] *.cat]"
+  halfPrecision {{parent.halfPrecision}}
+  serialiseKnob {}
+  name Inference_S
+  xpos -12
+  ypos 464
+  disable {{"parent.modelSize == 1"}}
+ }
+ Switch {
+  inputs 2
+  which {{parent.modelSize}}
+  name Switch1
+  xpos 52
+  ypos 518
+ }
+ Dot {
+  name Dot1
+  xpos 86
+  ypos 558
+ }
+ Switch {
+  inputs 2
+  which {{parent.viewMode}}
+  name Switch3
+  xpos 311
+  ypos 555
+ }
+push $N28e7b400
+ Dot {
+  name Dot11
+  xpos -57
+  ypos 22
+ }
+ Dot {
+  name Dot10
+  xpos -57
+  ypos 604
+ }
+ Copy {
+  inputs 2
+  from0 rgba.alpha
+  to0 rgba.alpha
+  name Copy1
+  xpos 311
+  ypos 597
+ }
+ Reformat {
+  type scale
+  scale {{"parent.resolution == 0 ? 1 : (parent.resolution == 1 ? 2 : 4)"}}
+  name Reformat2
+  xpos 311
+  ypos 646
+ }
+ Output {
+  name Output
+  xpos 311
+  ypos 688
+ }
+end_group

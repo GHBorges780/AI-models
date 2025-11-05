@@ -1,0 +1,12 @@
+{
+    "minimum_nuke_version_required": 16.0,
+    "version": 1,
+    "category": "Segmentation",
+    "description": "Boosting Image Matting with Pretrained Plain Vision Transformers",
+    "cats": [
+        {
+            "filepath": "ViTMatte.gizmo",
+            "name": "ViTMatte"
+        }
+    ]
+}

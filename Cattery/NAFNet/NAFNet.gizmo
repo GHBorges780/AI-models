@@ -1,0 +1,92 @@
+version 14.0 v1
+Gizmo {
+ onCreate "if nuke.NUKE_VERSION_MAJOR >= 14:\n    if nuke.expression('$gui'):\n        nukescripts.cattery.create_menu()\npath = \[i for i in nuke.pluginPath() if ''.join(l for l in nuke.thisNode().name() if l.isalpha()).lower() in i.lower()][0]\nif not path in sys.path:\n    sys.path.append(path)\nimport cattery_nafnet\ncattery_nafnet.on_create()"
+ onDestroy "nuke.thisNode()\[\"knobChanged\"].setValue(\"\")"
+ knobChanged "if nuke.NUKE_VERSION_MAJOR >= 14:\n    try:\n        import cattery_nafnet\n    except:\n        if nuke.expression('$gui'):\n            nukescripts.cattery.create_menu()\npath = \[i for i in nuke.pluginPath() if ''.join(l for l in nuke.thisNode().name() if l.isalpha()).lower() in i.lower()][0]\nif not path in sys.path:\n    sys.path.append(path)\nimport cattery_nafnet\ncattery_nafnet.knob_changed()"
+ addUserKnob {20 NAFNet}
+ addUserKnob {26 localGPU l "Local GPU:" T ""}
+ addUserKnob {26 gpuName l "" -STARTLINE T "NVIDIA RTX A4500"}
+ addUserKnob {6 useGPUIfAvailable l "Use GPU if available" t "Select this to render on the <b>Local GPU</b>, if available.\n\nYou can select this even if no GPU is currently available on your machine. The GPU will then be used whenever the script is opened on a machine which does have a GPU available. You should also select this if you wish to render from the command line with the <b>--gpu</b> option.\n\nIf this node requires full frames from its inputs, and is therefore unable to reduce its memory overhead, it will fall back to the CPU if an attempt to render a frame on the GPU fails due to lack of memory. When this occurs, a warning message will be printed to the console." +STARTLINE}
+ useGPUIfAvailable true
+ addUserKnob {26 ""}
+ addUserKnob {26 channelsIn l "Channels In:" t "The channels the model expects as input." T "rgba.red, rgba.green, rgba.blue"}
+ addUserKnob {41 in_colorspace l "Input Colorspace" t "Define the colorspace that the input image is in." T Colorspace1.colorspace_in}
+ addUserKnob {41 mix l "Denoise Mix" T Merge1.mix}
+ addUserKnob {6 halfPrecision l "Optimize for Speed and Memory" t "Whether to process at half float precision. This speeds up execution and enables the processing of larger images, however there is the risk of artifacts with some trained models." +STARTLINE}
+}
+ Input {
+  inputs 0
+  name Input1
+  xpos -150
+  ypos 87
+ }
+set Ndc11180 [stack 0]
+push $Ndc11180
+ Colorspace {
+  colorspace_in RGB
+  colorspace_out sRGB
+  name Colorspace1
+  knobChanged "nuke.toNode(\"Colorspace2\")\[\"colorspace_out\"].setValue(nuke.thisNode()\[\"colorspace_in\"].value())"
+  xpos -150
+  ypos 135
+ }
+set Ndc166a0 [stack 0]
+ Inference {
+  useGPUIfAvailable {{parent.useGPUIfAvailable}}
+  modelFile "\[lsearch -inline [plugins -all NAFNet-width64.cat] *.cat]"
+  halfPrecision {{parent.halfPrecision}}
+  serialiseKnob {}
+  name Inference1
+  xpos -150
+  ypos 183
+ }
+ Shuffle2 {
+  fromInput1 {{0} B}
+  fromInput2 {{0} B}
+  mappings "4 rgba.red 0 0 rgba.red 0 0 rgba.green 0 1 rgba.green 0 1 rgba.blue 0 2 rgba.blue 0 2 white -1 -1 rgba.alpha 0 3"
+  name Shuffle1
+  xpos -150
+  ypos 231
+ }
+push $Ndc166a0
+ Dot {
+  name Dot1
+  xpos -226
+  ypos 138
+ }
+ Shuffle2 {
+  fromInput1 {{0} B}
+  fromInput2 {{0} B}
+  mappings "4 rgba.red 0 0 rgba.red 0 0 rgba.green 0 1 rgba.green 0 1 rgba.blue 0 2 rgba.blue 0 2 white -1 -1 rgba.alpha 0 3"
+  name Shuffle2
+  xpos -260
+  ypos 279
+ }
+ Merge2 {
+  inputs 2
+  output {rgba.red rgba.green rgba.blue -rgba.alpha}
+  name Merge1
+  xpos -40
+  ypos 292
+ }
+ Remove {
+  operation keep
+  channels rgb
+  name Remove1
+  xpos -150
+  ypos 323
+ }
+ Colorspace {
+  colorspace_in sRGB
+  colorspace_out RGB
+  name Colorspace2
+  selected true
+  xpos -150
+  ypos 375
+ }
+ Output {
+  name Output1
+  xpos -150
+  ypos 423
+ }
+end_group
